@@ -463,7 +463,10 @@ class Assistant(object):
             stock_info = resp_json.get('stock')
             sku_state = stock_info.get('skuState')  # 商品是否上架
             stock_state = stock_info.get('StockState')  # 商品库存状态：33 -- 现货  0,34 -- 无货  36 -- 采购中  40 -- 可配货
-            return sku_state == 1 and stock_state in (33, 40)
+            pr = stock_info.get('pr')
+            if pr:
+                pr_result = pr.get('resultCode')
+            return sku_state == 1 and stock_state in (33, 40) and pr_result == 1
         except requests.exceptions.Timeout:
             logger.error('查询 %s 库存信息超时(%ss)', sku_id, self.timeout)
             return False
@@ -557,12 +560,16 @@ class Assistant(object):
         }
 
         resp_text = ''
+
         try:
             resp_text = requests.get(url=url, params=payload, headers=headers, timeout=self.timeout).text
             stock = True
+
             for sku_id, info in parse_json(resp_text).items():
                 sku_state = info.get('skuState')  # 商品是否上架
                 stock_state = info.get('StockState')  # 商品库存状态
+
+
                 if sku_state == 1 and stock_state in (33, 40):
                     continue
                 else:
